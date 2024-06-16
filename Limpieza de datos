@@ -1,0 +1,62 @@
+### Paso 5: Añadir el script de limpieza de datos
+
+Crea un archivo `scripts/data_cleaning.R` y agrega el siguiente contenido:
+
+```r
+# Instalar los paquetes necesarios si aún no están instalados
+if (!require("RCurl")) install.packages("RCurl")
+if (!require("readr")) install.packages("readr")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("tidyr")) install.packages("tidyr")
+
+# Cargar los paquetes
+library(RCurl)
+library(readr)
+library(dplyr)
+library(tidyr)
+
+# Definir la URL del archivo CSV
+url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/00468/online_shoppers_intention.csv"
+
+# Descargar el archivo CSV y guardarlo temporalmente
+temp <- tempfile()
+download.file(url, temp)
+
+# Leer el archivo CSV
+data <- read_csv(temp)
+
+# Eliminar el archivo temporal
+unlink(temp)
+
+# Mostrar estructura inicial del dataset
+glimpse(data)
+
+# Limpieza de datos
+# Verificar valores faltantes
+sum(is.na(data))
+
+# Reemplazar valores faltantes (si hay) con la mediana o moda según el tipo de dato
+data <- data %>%
+  mutate_if(is.numeric, ~ifelse(is.na(.), median(., na.rm = TRUE), .)) %>%
+  mutate_if(is.character, ~ifelse(is.na(.), "Unknown", .))
+
+# Transformaciones de datos
+# Convertir variables categóricas a factor
+categorical_columns <- c("Month", "VisitorType", "Weekend", "Revenue")
+data <- data %>%
+  mutate(across(all_of(categorical_columns), as.factor))
+
+# Crear variables nuevas si es necesario (ejemplo: total time on site)
+data <- data %>%
+  mutate(TotalTimeOnSite = Administrative_Duration + Informational_Duration + ProductRelated_Duration)
+
+# Estructuración de datos
+# Seleccionar columnas relevantes (si es necesario)
+data_clean <- data %>%
+  select(Administrative, Informational, ProductRelated, TotalTimeOnSite, BounceRates, ExitRates, PageValues, SpecialDay, Month, VisitorType, Weekend, Revenue)
+
+# Mostrar la estructura del dataset limpio
+glimpse(data_clean)
+
+# Guardar el dataset limpio en un archivo CSV
+write_csv(data_clean, "data/cleaned_online_shoppers_intention.csv")
